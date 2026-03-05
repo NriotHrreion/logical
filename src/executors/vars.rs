@@ -13,7 +13,7 @@ impl Executor for VarsExecutor {
       for (name, value) in vars_map {
         println!(
           "{}{}{}",
-          name.bold(),
+          name.bold().green(),
           "=".bright_black(),
           value
         );

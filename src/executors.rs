@@ -6,16 +6,16 @@ mod vars;
 
 use crate::executors::{
   traits::Executor,
-  simple::SimpleExecutor,
   exit::ExitExecutor,
+  simple::SimpleExecutor,
   var::VarExecutor,
   vars::VarsExecutor,
 };
 
 pub fn get_executors() -> Vec<Box<dyn Executor>> {
   vec![
-    Box::new(SimpleExecutor),
     Box::new(ExitExecutor),
+    Box::new(SimpleExecutor),
     Box::new(VarExecutor),
     Box::new(VarsExecutor),
   ]

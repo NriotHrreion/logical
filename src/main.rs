@@ -5,6 +5,7 @@ use crate::executors::get_executors;
 mod global;
 mod executors;
 mod variables;
+mod utils;
 
 fn main() {
 	loop {

@@ -1,9 +1,7 @@
-use std::any::Any;
-
 use crate::global::*;
 
 #[derive(Clone, PartialEq)]
-enum ImplicationType {
+pub enum ImplicationType {
   Forward,
   Reverse,
   Bidirectional,
@@ -31,30 +29,41 @@ fn err_wrapper(e: &str, i: usize) -> Result<Box<ASTNode>, String> {
   Err(format!("{e} (at {i})"))
 }
 
-fn put_not_into_ast(ast: &mut ASTNode, val: ASTNode) -> Result<(), String> {
+fn put_not_op_into_ast(ast: &mut ASTNode, val: ASTNode) -> Result<(), &str> {
   *ast = ASTNode::Not(Box::new(val));
 
   Ok(())
 }
 
-fn put_op_into_ast(
+fn put_ifthen_op_into_ast(
+  ast: &mut ASTNode,
+  implication_type: ImplicationType,
+  val1: ASTNode,
+  val2: ASTNode,
+) -> Result<(), &str> {
+  *ast = ASTNode::Ifthen(implication_type, Box::new(val1), Box::new(val2));
+
+  Ok(())
+}
+
+fn put_common_op_into_ast(
   ast: &mut ASTNode,
   op_type: OpType,
   val1: ASTNode,
   val2: ASTNode,
 ) -> Result<(), &str> {
   match op_type {
-    OpType::Not => {
-      return Err("Cannot add this NOT operation into the ast.");
-    }
     OpType::And => {
       *ast = ASTNode::And(Box::new(val1), Box::new(val2));
     }
     OpType::Or => {
       *ast = ASTNode::Or(Box::new(val1), Box::new(val2));
     }
+    OpType::Not => {
+      return Err("Cannot add this NOT operation into the ast.");
+    }
     OpType::Ifthen(_) => {
-      return Err("todo...");
+      return Err("Cannot add this IFTHEN operation into the ast.");
     }
   }
 
@@ -70,8 +79,23 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
   while let Some((i, char)) = chars_peekable.next() {
     match char {
       '0' | '1' => { // constant value
+        if temp_value.is_some() && matches!(op_type, Some(OpType::Ifthen(_))) {
+          if let Some(OpType::Ifthen(implication_type)) = op_type.take() {
+            match put_ifthen_op_into_ast(
+              &mut ast,
+              implication_type,
+              temp_value.take().unwrap(),
+              ASTNode::Value(char == '1'),
+            ) {
+              Ok(()) => { temp_value = None; }
+              Err(e) => { return err_wrapper(e, i); }
+            }
+            continue;
+          }
+        }
+
         if temp_value.is_some() && op_type.is_some() {
-          match put_op_into_ast(
+          match put_common_op_into_ast(
             &mut ast,
             op_type.take().unwrap(),
             temp_value.take().unwrap(),
@@ -89,11 +113,28 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
       }
       NOT_SYM => {
         if let Some(&(_, next_char)) = chars_peekable.peek() {
-          if next_char != '0' && next_char != '1' {
+          if next_char != '0' && next_char != '1' && next_char != NOT_SYM {
             return err_wrapper("Expect a constant value.", i);
           }
-          put_not_into_ast(&mut ast, ASTNode::Value(next_char == '1'))?;
-          chars_peekable.next();
+
+          // To auto optimize expressions like `!!!!!1` to `!1`
+          let mut should_reverse = false;
+          while let Some(&(_, next_next)) = chars_peekable.peek() && next_next == NOT_SYM {
+            should_reverse = !should_reverse;
+            chars_peekable.next();
+          }
+          
+          let comparator: char;
+          if should_reverse { comparator = '0'; }
+          else { comparator = '1'; }
+
+          if let Some(&(_, new_next_char)) = chars_peekable.peek() {
+            match put_not_op_into_ast(&mut ast, ASTNode::Value(new_next_char == comparator)) {
+              Ok(()) => {}
+              Err(e) => { return err_wrapper(e, i) }
+            }
+            chars_peekable.next();
+          }
         }
       }
       AND_SYM => {
@@ -112,6 +153,36 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
         }
 
         op_type = Some(OpType::Or);
+        if !ast.eq(&ASTNode::Empty) {
+          temp_value = Some(ast.clone());
+        }
+      }
+      IFTHEN_FORWARD_SYM => {
+        if op_type.is_some() {
+          return err_wrapper("Expect a value, but found an IFTHEN_FORWARD operation.", i);
+        }
+
+        op_type = Some(OpType::Ifthen(ImplicationType::Forward));
+        if !ast.eq(&ASTNode::Empty) {
+          temp_value = Some(ast.clone());
+        }
+      }
+      IFTHEN_REVERSE_SYM => {
+        if op_type.is_some() {
+          return err_wrapper("Expect a value, but found an IFTHEN_REVERSE operation.", i);
+        }
+
+        op_type = Some(OpType::Ifthen(ImplicationType::Reverse));
+        if !ast.eq(&ASTNode::Empty) {
+          temp_value = Some(ast.clone());
+        }
+      }
+      IFTHEN_BIDIRECTIONAL_SYM => {
+        if op_type.is_some() {
+          return err_wrapper("Expect a value, but found an IFTHEN_BIDIRECTIONAL operation.", i);
+        }
+
+        op_type = Some(OpType::Ifthen(ImplicationType::Bidirectional));
         if !ast.eq(&ASTNode::Empty) {
           temp_value = Some(ast.clone());
         }

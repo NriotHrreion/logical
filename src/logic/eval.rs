@@ -1,4 +1,5 @@
-use crate::logic::parser::ASTNode;
+use crate::logic::parser::{ASTNode, ImplicationType};
+use crate::utils::*;
 
 pub fn eval_ast(ast: Box<ASTNode>) -> Result<bool, String> {
   match *ast {
@@ -16,6 +17,15 @@ pub fn eval_ast(ast: Box<ASTNode>) -> Result<bool, String> {
       let val1 = eval_ast(node1)?;
       let val2 = eval_ast(node2)?;
       Ok(val1 || val2)
+    }
+    ASTNode::Ifthen(implication_type, node1, node2) => {
+      let val1 = eval_ast(node1)?;
+      let val2 = eval_ast(node2)?;
+      match implication_type {
+        ImplicationType::Forward => { Ok(implication_forward(val1, val2)) }
+        ImplicationType::Reverse => { Ok(implication_reverse(val1, val2)) }
+        ImplicationType::Bidirectional => { Ok(implication_bidirectional(val1, val2)) }
+      }
     }
     _ => Ok(false),
   }

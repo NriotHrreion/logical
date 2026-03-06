@@ -15,3 +15,15 @@ pub fn validate_var_name(name_str: &str) -> bool {
 
   true
 }
+
+pub fn implication_forward(val1: bool, val2: bool) -> bool {
+  !val1 || val2
+}
+
+pub fn implication_reverse(val1: bool, val2: bool) -> bool {
+  val1 || !val2
+}
+
+pub fn implication_bidirectional(val1: bool, val2: bool) -> bool {
+  val1 == val2
+}

@@ -44,6 +44,31 @@ fn eval_chained_operators_without_parentheses() {
 }
 
 #[test]
+fn eval_implication_operators() {
+	assert_eq!(eval_expr("1>0").unwrap(), false);
+	assert_eq!(eval_expr("1>1").unwrap(), true);
+	assert_eq!(eval_expr("0>0").unwrap(), true);
+	assert_eq!(eval_expr("0>1").unwrap(), true);
+
+	assert_eq!(eval_expr("1<0").unwrap(), true);
+	assert_eq!(eval_expr("0<1").unwrap(), false);
+
+	assert_eq!(eval_expr("1-1").unwrap(), true);
+	assert_eq!(eval_expr("1-0").unwrap(), false);
+
+	assert_eq!(eval_expr("1>1>0").unwrap(), false);
+	assert_eq!(eval_expr("1>0>1").unwrap(), true);
+}
+
+#[test]
+fn eval_chained_not_operators() {
+	assert_eq!(eval_expr("!!1").unwrap(), true);
+	assert_eq!(eval_expr("!!!1").unwrap(), false);
+	assert_eq!(eval_expr("!!0").unwrap(), false);
+	assert_eq!(eval_expr("!!!0").unwrap(), true);
+}
+
+#[test]
 fn rejects_invalid_characters() {
 	match parse_to_ast("1a0") {
 		Ok(_) => panic!("Expected parser to reject invalid characters"),

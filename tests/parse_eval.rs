@@ -1,7 +1,7 @@
-use logical::logic::{ast::compile_to_ast, eval::eval_ast};
+use logical::logic::{parser::parse_to_ast, eval::eval_ast};
 
 fn eval_expr(expr: &str) -> Result<bool, String> {
-	let ast = compile_to_ast(expr)?;
+	let ast = parse_to_ast(expr)?;
 	eval_ast(ast)
 }
 
@@ -45,7 +45,7 @@ fn eval_chained_operators_without_parentheses() {
 
 #[test]
 fn rejects_invalid_characters() {
-	match compile_to_ast("1a0") {
+	match parse_to_ast("1a0") {
 		Ok(_) => panic!("Expected parser to reject invalid characters"),
 		Err(err) => assert!(err.contains("Unexpected character")),
 	}

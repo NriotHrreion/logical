@@ -61,7 +61,7 @@ fn put_op_into_ast(
   Ok(())
 }
 
-pub fn compile_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
+pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
   let mut ast = ASTNode::Empty;
   let mut temp_value: Option<ASTNode> = None;
   let mut op_type: Option<OpType> = None;

@@ -1,4 +1,4 @@
-use crate::logic::ast::ASTNode;
+use crate::logic::parser::ASTNode;
 
 pub fn eval_ast(ast: Box<ASTNode>) -> Result<bool, String> {
   match *ast {

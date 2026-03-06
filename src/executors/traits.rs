@@ -1,3 +1,3 @@
 pub trait Executor {
-  fn execute(&self, input: &str) -> Result<bool, &str>;
+  fn execute(&self, input: &str) -> Result<bool, String>;
 }

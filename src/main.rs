@@ -5,6 +5,7 @@ use crate::executors::get_executors;
 mod global;
 mod executors;
 mod variables;
+mod logic;
 mod utils;
 
 fn main() {
@@ -15,7 +16,7 @@ fn main() {
 		let mut line = String::new();
 		io::stdin()
 			.read_line(&mut line)
-			.expect("Failed to read line.");
+			.expect("Error: Failed to read line.");
 
 		let input = line.trim();
 		for executor in get_executors() {
@@ -26,7 +27,7 @@ fn main() {
 					}
 				}
 				Err(e) => {
-					eprintln!("Error executing the input: {}", e);
+					eprintln!("Error: {}", e);
 					break;
 				}
 			}

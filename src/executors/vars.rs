@@ -6,22 +6,22 @@ use crate::variables::Variables;
 pub struct VarsExecutor;
 
 impl Executor for VarsExecutor {
-  fn execute(&self, input: &str) -> Result<bool, &str> {
+  fn execute(&self, input: &str) -> Result<bool, String> {
     if input.eq("vars") {
       let variables = Variables::get_instance().read().unwrap();
       let vars_map = variables.get_all_vars();
       for (name, value) in vars_map {
         println!(
           "{}{}{}",
-          name.bold().green(),
+          name.to_string().bold().green(),
           "=".bright_black(),
           value
         );
       }
-      return Result::Ok(true);
+      return Ok(true);
     }
 
-    Result::Ok(false)
+    Ok(false)
   }
 }
 

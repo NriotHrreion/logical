@@ -1,13 +1,15 @@
 use crate::global::EQUAL_SYM;
 
-pub fn validate_var_name(name: &str) -> bool {
-  if name.len() == 0 {
+pub fn validate_var_name(name_str: &str) -> bool {
+  if name_str.len() != 1 {
     return false;
   }
-  if !name.starts_with(|c: char| c.is_alphabetic() || c.to_string().eq("_") || c.to_string().eq("$")) {
+
+  let name = name_str.chars().next().unwrap();
+  if !name.is_alphabetic() && name_str != "_" && name_str != "$" {
     return false;
   }
-  if name.contains(EQUAL_SYM) || name.contains(" ") || name.contains("<") || name.contains(">") || name.contains("-") {
+  if name == EQUAL_SYM || name_str == " " || name_str == "<" || name_str == ">" || name_str == "-" {
     return false;
   }
 

@@ -1,5 +1,8 @@
 use std::io::{self, Write};
 
+use colored::Colorize;
+
+use crate::mode::get_mode_name;
 use crate::executors::get_executors;
 
 mod global;
@@ -7,10 +10,15 @@ mod executors;
 mod variables;
 mod logic;
 mod utils;
+mod mode;
 
 fn main() {
 	loop {
-		print!("{}", global::CLI_PREFIX);
+		print!(
+			"{}@{}> ",
+			global::CLI_PREFIX.blue(),
+			get_mode_name().bright_black()
+		);
 		io::stdout().flush().unwrap();
 
 		let mut line = String::new();

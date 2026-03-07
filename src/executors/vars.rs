@@ -10,12 +10,16 @@ impl Executor for VarsExecutor {
     if input.eq("vars") {
       let variables = Variables::get_instance().read().unwrap();
       let vars_map = variables.get_all_vars();
-      for (name, value) in vars_map {
+      for (name, val) in vars_map {
+        let val_str = match val {
+          true => "1",
+          false => "0"
+        };
         println!(
           "{}{}{}",
           name.to_string().bold().green(),
           "=".bright_black(),
-          value
+          val_str
         );
       }
       return Ok(true);

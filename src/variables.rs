@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::{RwLock, OnceLock}};
 
 pub struct Variables {
-  vars: HashMap<char, String>
+  vars: HashMap<char, bool>
 }
 
 impl Variables {
@@ -11,15 +11,15 @@ impl Variables {
     }
   }
 
-  pub fn create_var(&mut self, name: &char, value: &str) -> Result<(), &str> {
-    if self.vars.contains_key(name) {
-      return Err("Variable already exists.");
-    }
-    self.vars.insert(*name, value.to_string());
-    Ok(())
+  pub fn set_var(&mut self, name: &char, value: bool) {
+    self.vars.insert(*name, value);
   }
 
-  pub fn get_all_vars(&self) -> &HashMap<char, String> {
+  pub fn get_var(&self, name: &char) -> Option<bool> {
+    self.vars.get(name).copied()
+  }
+
+  pub fn get_all_vars(&self) -> &HashMap<char, bool> {
     &self.vars
   }
 

@@ -1,3 +1,7 @@
+use logical::logic::eval::eval_ast;
+use logical::logic::parser::parse_to_ast;
+use logical::mode::Mode;
+
 use crate::executors::traits::Executor;
 use crate::global::EQUAL_SYM;
 use crate::variables::Variables;
@@ -10,8 +14,8 @@ impl Executor for VarExecutor {
     if input.contains(EQUAL_SYM) && !input.ends_with(EQUAL_SYM) {
       let v: Vec<&str> = input.split(EQUAL_SYM).collect();
       let name_str: &str = v.get(0).unwrap_or(&"");
-      let value: &str = v.get(1).unwrap_or(&"");
-      if name_str.len() == 0 || value.len() == 0 {
+      let expr: &str = v.get(1).unwrap_or(&"");
+      if name_str.len() == 0 || expr.len() == 0 {
         return Ok(true);
       }
 
@@ -23,8 +27,12 @@ impl Executor for VarExecutor {
         }
       }
 
+      let mut variables = Variables::get_instance().write().unwrap();
+      let ast = parse_to_ast(expr, Mode::Default)?;
+      let val = eval_ast(ast, variables.get_all_vars())?;
+
       let name = name_str.chars().next().unwrap();
-      Variables::get_instance().write().unwrap().create_var(&name, value)?;
+      variables.set_var(&name, val);
       return Ok(true);
     }
 

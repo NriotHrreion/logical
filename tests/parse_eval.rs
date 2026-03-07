@@ -1,8 +1,10 @@
-use logical::logic::{parser::parse_to_ast, eval::eval_ast};
+use std::collections::HashMap;
+
+use logical::{logic::{eval::eval_ast, parser::parse_to_ast}, mode::Mode};
 
 fn eval_expr(expr: &str) -> Result<bool, String> {
-	let ast = parse_to_ast(expr)?;
-	eval_ast(ast)
+	let ast = parse_to_ast(expr, Mode::Default)?;
+	eval_ast(ast, &HashMap::new())
 }
 
 #[test]
@@ -99,7 +101,7 @@ fn eval_parenthesized_expressions_with_not() {
 
 #[test]
 fn rejects_invalid_characters() {
-	match parse_to_ast("1a0") {
+	match parse_to_ast("1a0", Mode::Default) {
 		Ok(_) => panic!("Expected parser to reject invalid characters"),
 		Err(err) => assert!(err.contains("Unexpected character")),
 	}

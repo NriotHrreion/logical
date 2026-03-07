@@ -1,4 +1,4 @@
-use crate::global::*;
+use crate::{global::*, mode::Mode, utils::validate_var_name, variables::Variables};
 
 #[derive(Clone, PartialEq)]
 pub enum ImplicationType {
@@ -64,7 +64,7 @@ fn put_common_op_into_ast(
   Ok(())
 }
 
-pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
+pub fn parse_to_ast(expr: &str, mode: Mode) -> Result<Box<ASTNode>, String> {
   let mut ast = ASTNode::Empty;
   let mut temp_val1: Option<ASTNode> = None;
   let mut temp_val2: Option<ASTNode> = None;
@@ -94,7 +94,7 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
               }
 
               // bracket end
-              let bracket_ast = match parse_to_ast(&temp_expr) {
+              let bracket_ast = match parse_to_ast(&temp_expr, mode) {
                 Ok(parsed) => { Some(*parsed) }
                 Err(e) => { return err_wrapper(&e, j); }
               };
@@ -178,7 +178,32 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
           temp_val1 = Some(ast.clone());
         }
       }
-      _ => return err_wrapper("Unexpected character.", i),
+      _ => {
+        match validate_var_name(&char.to_string()) {
+          Err(_) => return err_wrapper("Unexpected character.", i),
+          _ => {}
+        }
+
+        let var_ast = match mode {
+          Mode::Default => { // default mode
+            let variables = Variables::get_instance().read().unwrap();
+            let var_value = match variables.get_var(&char) {
+              Some(val) => val,
+              None => { return err_wrapper("No such variable.", i); }
+            };
+
+            Some(ASTNode::Value(var_value))
+          }
+          Mode::Table => Some(ASTNode::Var(char))
+        };
+
+        if temp_val1.is_none() {
+          temp_val1 = var_ast;
+        } else if temp_val2.is_none() {
+          temp_val2 = var_ast;
+        }
+        if matches!(not_type, Some(OpType::Not(_))) { can_put_not = true; }
+      }
     }
 
     // create NOT node

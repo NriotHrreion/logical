@@ -1,4 +1,4 @@
-pub const CLI_PREFIX: &'static str = "logical> ";
+pub const CLI_PREFIX: &'static str = "logical";
 
 pub const EQUAL_SYM: char = '=';
 pub const NOT_SYM: char = '!';

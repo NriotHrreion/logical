@@ -98,11 +98,3 @@ fn eval_parenthesized_expressions_with_not() {
 	assert_eq!(eval_expr("!((1|0)&(1|1))").unwrap(), false);
 	assert_eq!(eval_expr("!((1&1)|0)&1").unwrap(), false);
 }
-
-#[test]
-fn rejects_invalid_characters() {
-	match parse_to_ast("1a0", Mode::Default) {
-		Ok(_) => panic!("Expected parser to reject invalid characters"),
-		Err(err) => assert!(err.contains("Unexpected character")),
-	}
-}

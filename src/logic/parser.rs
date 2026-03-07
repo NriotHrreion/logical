@@ -72,46 +72,57 @@ fn put_common_op_into_ast(
 
 pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
   let mut ast = ASTNode::Empty;
-  let mut temp_value: Option<ASTNode> = None;
+  let mut temp_val1: Option<ASTNode> = None;
+  let mut temp_val2: Option<ASTNode> = None;
   let mut op_type: Option<OpType> = None;
 
   let mut chars_peekable = expr.chars().enumerate().peekable();
   while let Some((i, char)) = chars_peekable.next() {
     match char {
-      '0' | '1' => { // constant value
-        if temp_value.is_some() && matches!(op_type, Some(OpType::Ifthen(_))) {
-          if let Some(OpType::Ifthen(implication_type)) = op_type.take() {
-            match put_ifthen_op_into_ast(
-              &mut ast,
-              implication_type,
-              temp_value.take().unwrap(),
-              ASTNode::Value(char == '1'),
-            ) {
-              Ok(()) => { temp_value = None; }
-              Err(e) => { return err_wrapper(e, i); }
+      '(' => { // brackets
+        let mut layer: usize = 1;
+        let mut temp_expr: String = String::from("");
+
+        // bracket begin
+        while let Some((j, inside_char)) = chars_peekable.next() {
+          match inside_char {
+            '(' => {
+              layer += 1;
+              temp_expr += "(";
             }
-            continue;
-          }
-        }
+            ')' => {
+              layer -= 1;
+              if layer > 0 {
+                temp_expr += ")";
+                continue;
+              }
 
-        if temp_value.is_some() && op_type.is_some() {
-          match put_common_op_into_ast(
-            &mut ast,
-            op_type.take().unwrap(),
-            temp_value.take().unwrap(),
-            ASTNode::Value(char == '1'),
-          ) {
-            Ok(()) => { temp_value = None; }
-            Err(e) => { return err_wrapper(e, i); }
+              // bracket end
+              if temp_val1.is_none() {
+                temp_val1 = match parse_to_ast(&temp_expr) {
+                  Ok(bracket_ast) => { Some(*bracket_ast) }
+                  Err(e) => { return err_wrapper(&e, j); }
+                };
+              } else if temp_val2.is_none() {
+                temp_val2 = match parse_to_ast(&temp_expr) {
+                  Ok(bracket_ast) => { Some(*bracket_ast) }
+                  Err(e) => { return err_wrapper(&e, j); }
+                };
+              }
+              break; // stop the bracket loop
+            }
+            _ => { temp_expr += &inside_char.to_string(); }
           }
-          continue;
-        }
-
-        if temp_value.is_none() && op_type.is_none() {
-          temp_value = Some(ASTNode::Value(char == '1'));
         }
       }
-      NOT_SYM => {
+      '0' | '1' => { // constant value
+        if temp_val1.is_none() {
+          temp_val1 = Some(ASTNode::Value(char == '1'));
+        } else if temp_val2.is_none() {
+          temp_val2 = Some(ASTNode::Value(char == '1'));
+        }
+      }
+      NOT_SYM => { /* todo */
         if let Some(&(_, next_char)) = chars_peekable.peek() {
           if next_char != '0' && next_char != '1' && next_char != NOT_SYM {
             return err_wrapper("Expect a constant value.", i);
@@ -144,7 +155,7 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
 
         op_type = Some(OpType::And);
         if !ast.eq(&ASTNode::Empty) {
-          temp_value = Some(ast.clone());
+          temp_val1 = Some(ast.clone());
         }
       }
       OR_SYM => {
@@ -154,7 +165,7 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
 
         op_type = Some(OpType::Or);
         if !ast.eq(&ASTNode::Empty) {
-          temp_value = Some(ast.clone());
+          temp_val1 = Some(ast.clone());
         }
       }
       IFTHEN_FORWARD_SYM => {
@@ -164,7 +175,7 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
 
         op_type = Some(OpType::Ifthen(ImplicationType::Forward));
         if !ast.eq(&ASTNode::Empty) {
-          temp_value = Some(ast.clone());
+          temp_val1 = Some(ast.clone());
         }
       }
       IFTHEN_REVERSE_SYM => {
@@ -174,7 +185,7 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
 
         op_type = Some(OpType::Ifthen(ImplicationType::Reverse));
         if !ast.eq(&ASTNode::Empty) {
-          temp_value = Some(ast.clone());
+          temp_val1 = Some(ast.clone());
         }
       }
       IFTHEN_BIDIRECTIONAL_SYM => {
@@ -184,15 +195,46 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
 
         op_type = Some(OpType::Ifthen(ImplicationType::Bidirectional));
         if !ast.eq(&ASTNode::Empty) {
-          temp_value = Some(ast.clone());
+          temp_val1 = Some(ast.clone());
         }
       }
       _ => return err_wrapper("Unexpected character.", i),
     }
+
+    if temp_val1.is_none() || temp_val2.is_none() { continue; }
+    
+    // put the temp values (val1, val2) into ast
+    if matches!(op_type, Some(OpType::Ifthen(_))) {
+      if let Some(OpType::Ifthen(implication_type)) = op_type.take() {
+        match put_ifthen_op_into_ast(
+          &mut ast,
+          implication_type,
+          temp_val1.take().unwrap(),
+          temp_val2.take().unwrap(),
+        ) {
+          Ok(()) => { temp_val1 = None; }
+          Err(e) => { return err_wrapper(e, i); }
+        }
+        continue;
+      }
+    }
+
+    if op_type.is_some() {
+      match put_common_op_into_ast(
+        &mut ast,
+        op_type.take().unwrap(),
+        temp_val1.take().unwrap(),
+        temp_val2.take().unwrap(),
+      ) {
+        Ok(()) => { temp_val1 = None; }
+        Err(e) => { return err_wrapper(e, i); }
+      }
+      continue;
+    }
   }
 
-  if temp_value.is_some() {
-    ast = temp_value.take().unwrap();
+  if temp_val1.is_some() {
+    ast = temp_val1.take().unwrap();
   }
 
   Ok(optimize_ast(Box::new(ast)))

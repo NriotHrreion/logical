@@ -8,7 +8,7 @@ pub enum ImplicationType {
 }
 #[derive(PartialEq)]
 enum OpType {
-  Not,
+  Not(bool),
   And,
   Or,
   Ifthen(ImplicationType),
@@ -27,12 +27,6 @@ pub enum ASTNode {
 
 fn err_wrapper(e: &str, i: usize) -> Result<Box<ASTNode>, String> {
   Err(format!("{e} (at {i})"))
-}
-
-fn put_not_op_into_ast(ast: &mut ASTNode, val: ASTNode) -> Result<(), &str> {
-  *ast = ASTNode::Not(Box::new(val));
-
-  Ok(())
 }
 
 fn put_ifthen_op_into_ast(
@@ -59,7 +53,7 @@ fn put_common_op_into_ast(
     OpType::Or => {
       *ast = ASTNode::Or(Box::new(val1), Box::new(val2));
     }
-    OpType::Not => {
+    OpType::Not(_) => {
       return Err("Cannot add this NOT operation into the ast.");
     }
     OpType::Ifthen(_) => {
@@ -75,6 +69,8 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
   let mut temp_val1: Option<ASTNode> = None;
   let mut temp_val2: Option<ASTNode> = None;
   let mut op_type: Option<OpType> = None;
+  let mut not_type: Option<OpType> = None; // exclusive for NOT operation
+  let mut can_put_not: bool = false; // can put not only when value occurs after NOT operation
 
   let mut chars_peekable = expr.chars().enumerate().peekable();
   while let Some((i, char)) = chars_peekable.next() {
@@ -98,17 +94,17 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
               }
 
               // bracket end
+              let bracket_ast = match parse_to_ast(&temp_expr) {
+                Ok(parsed) => { Some(*parsed) }
+                Err(e) => { return err_wrapper(&e, j); }
+              };
+
               if temp_val1.is_none() {
-                temp_val1 = match parse_to_ast(&temp_expr) {
-                  Ok(bracket_ast) => { Some(*bracket_ast) }
-                  Err(e) => { return err_wrapper(&e, j); }
-                };
+                temp_val1 = bracket_ast;
               } else if temp_val2.is_none() {
-                temp_val2 = match parse_to_ast(&temp_expr) {
-                  Ok(bracket_ast) => { Some(*bracket_ast) }
-                  Err(e) => { return err_wrapper(&e, j); }
-                };
+                temp_val2 = bracket_ast;
               }
+              if matches!(not_type, Some(OpType::Not(_))) { can_put_not = true; }
               break; // stop the bracket loop
             }
             _ => { temp_expr += &inside_char.to_string(); }
@@ -116,36 +112,20 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
         }
       }
       '0' | '1' => { // constant value
+        let value_ast = Some(ASTNode::Value(char == '1'));
+
         if temp_val1.is_none() {
-          temp_val1 = Some(ASTNode::Value(char == '1'));
+          temp_val1 = value_ast;
         } else if temp_val2.is_none() {
-          temp_val2 = Some(ASTNode::Value(char == '1'));
+          temp_val2 = value_ast;
         }
+        if matches!(not_type, Some(OpType::Not(_))) { can_put_not = true; }
       }
-      NOT_SYM => { /* todo */
-        if let Some(&(_, next_char)) = chars_peekable.peek() {
-          if next_char != '0' && next_char != '1' && next_char != NOT_SYM {
-            return err_wrapper("Expect a constant value.", i);
-          }
-
-          // To auto optimize expressions like `!!!!!1` to `!1`
-          let mut should_reverse = false;
-          while let Some(&(_, next_next)) = chars_peekable.peek() && next_next == NOT_SYM {
-            should_reverse = !should_reverse;
-            chars_peekable.next();
-          }
-          
-          let comparator: char;
-          if should_reverse { comparator = '0'; }
-          else { comparator = '1'; }
-
-          if let Some(&(_, new_next_char)) = chars_peekable.peek() {
-            match put_not_op_into_ast(&mut ast, ASTNode::Value(new_next_char == comparator)) {
-              Ok(()) => {}
-              Err(e) => { return err_wrapper(e, i) }
-            }
-            chars_peekable.next();
-          }
+      NOT_SYM => {
+        if let Some(OpType::Not(should_reverse)) = not_type {
+          not_type = Some(OpType::Not(!should_reverse));
+        } else {
+          not_type = Some(OpType::Not(false));
         }
       }
       AND_SYM => {
@@ -201,24 +181,42 @@ pub fn parse_to_ast(expr: &str) -> Result<Box<ASTNode>, String> {
       _ => return err_wrapper("Unexpected character.", i),
     }
 
-    if temp_val1.is_none() || temp_val2.is_none() { continue; }
-    
-    // put the temp values (val1, val2) into ast
-    if matches!(op_type, Some(OpType::Ifthen(_))) {
-      if let Some(OpType::Ifthen(implication_type)) = op_type.take() {
-        match put_ifthen_op_into_ast(
-          &mut ast,
-          implication_type,
-          temp_val1.take().unwrap(),
-          temp_val2.take().unwrap(),
-        ) {
-          Ok(()) => { temp_val1 = None; }
-          Err(e) => { return err_wrapper(e, i); }
-        }
-        continue;
+    // create NOT node
+    if can_put_not
+      && matches!(not_type, Some(OpType::Not(_)))
+      && let Some(OpType::Not(should_reverse)) = not_type.take()
+      && !should_reverse {
+      if temp_val2.is_some() {
+        temp_val2 = Some(ASTNode::Not(
+          Box::new(temp_val2.take().unwrap())
+        ));
+      } else if temp_val1.is_some() {
+        temp_val1 = Some(ASTNode::Not(
+          Box::new(temp_val1.take().unwrap())
+        ));
       }
+      can_put_not = false;
     }
 
+    // put the temp values (val1, val2) into ast
+    if temp_val1.is_none() || temp_val2.is_none() { continue; }
+    
+    // put ifthen
+    if matches!(op_type, Some(OpType::Ifthen(_)))
+      && let Some(OpType::Ifthen(implication_type)) = op_type.take() {
+      match put_ifthen_op_into_ast(
+        &mut ast,
+        implication_type,
+        temp_val1.take().unwrap(),
+        temp_val2.take().unwrap(),
+      ) {
+        Ok(()) => { temp_val1 = None; }
+        Err(e) => { return err_wrapper(e, i); }
+      }
+      continue;
+    }
+
+    // put common
     if op_type.is_some() {
       match put_common_op_into_ast(
         &mut ast,

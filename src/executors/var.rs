@@ -15,9 +15,12 @@ impl Executor for VarExecutor {
         return Ok(true);
       }
 
-      if !validate_var_name(name_str) {
-        eprintln!("Cannot create variable {}: Invalid variable name.", name_str);
-        return Ok(true);
+      match validate_var_name(name_str) {
+        Ok(()) => {}
+        Err(reason) => {
+          eprintln!("Cannot create variable {}: {}", name_str, reason);
+          return Ok(true);
+        }
       }
 
       let name = name_str.chars().next().unwrap();

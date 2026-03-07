@@ -1,19 +1,14 @@
-use crate::global::EQUAL_SYM;
-
-pub fn validate_var_name(name_str: &str) -> bool {
+pub fn validate_var_name(name_str: &str) -> Result<(), &str> {
   if name_str.len() != 1 {
-    return false;
+    return Err("Length of variable names must be 1.");
   }
 
   let name = name_str.chars().next().unwrap();
   if !name.is_alphabetic() && name_str != "_" && name_str != "$" {
-    return false;
-  }
-  if name == EQUAL_SYM || name_str == " " || name_str == "<" || name_str == ">" || name_str == "-" {
-    return false;
+    return Err("Variable name should be alphabetic, '_' or '$'.");
   }
 
-  true
+  Ok(())
 }
 
 pub fn implication_forward(val1: bool, val2: bool) -> bool {

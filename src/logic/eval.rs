@@ -29,6 +29,11 @@ pub fn eval_ast(ast: Box<ASTNode>, vars: &HashMap<char, bool>) -> Result<bool, S
       let val2 = eval_ast(node2, vars)?;
       Ok(val1 || val2)
     }
+    ASTNode::StrictOr(node1, node2) => {
+      let val1 = eval_ast(node1, vars)?;
+      let val2 = eval_ast(node2, vars)?;
+      Ok((val1 && !val2) || (!val1 && val2))
+    }
     ASTNode::Ifthen(implication_type, node1, node2) => {
       let val1 = eval_ast(node1, vars)?;
       let val2 = eval_ast(node2, vars)?;

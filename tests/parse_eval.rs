@@ -36,6 +36,14 @@ fn eval_or_operator() {
 }
 
 #[test]
+fn eval_strict_or_operator() {
+	assert_eq!(eval_expr("1||1").unwrap(), false);
+	assert_eq!(eval_expr("1||0").unwrap(), true);
+	assert_eq!(eval_expr("0||1").unwrap(), true);
+	assert_eq!(eval_expr("0||0").unwrap(), false);
+}
+
+#[test]
 fn eval_chained_operators_without_parentheses() {
 	assert_eq!(eval_expr("1&1&0").unwrap(), false);
 	assert_eq!(eval_expr("0|0|1").unwrap(), true);
@@ -82,6 +90,7 @@ fn eval_parenthesized_expressions() {
 	assert_eq!(eval_expr("(1&0)|1").unwrap(), true);
 	assert_eq!(eval_expr("(1|0)&0").unwrap(), false);
 	assert_eq!(eval_expr("(1|0)&(1|1)").unwrap(), true);
+	assert_eq!(eval_expr("(1|0)&(1||1)").unwrap(), false);
 	assert_eq!(eval_expr("((1&1)|0)&1").unwrap(), true);
 }
 
@@ -96,5 +105,5 @@ fn eval_parenthesized_expressions_with_not() {
 	assert_eq!(eval_expr("!(1&0)|0").unwrap(), true);
 	assert_eq!(eval_expr("(!(1|0))&1").unwrap(), false);
 	assert_eq!(eval_expr("!((1|0)&(1|1))").unwrap(), false);
-	assert_eq!(eval_expr("!((1&1)|0)&1").unwrap(), false);
+	assert_eq!(eval_expr("!((1&1)||1)&1").unwrap(), true);
 }

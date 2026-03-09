@@ -19,6 +19,7 @@ fn get_ast_var_names(ast: Box<ASTNode>) -> Vec<char> {
     ASTNode::Not(node) => get_ast_var_names(node),
     ASTNode::And(node1, node2)
     | ASTNode::Or(node1, node2)
+    | ASTNode::StrictOr(node1, node2)
     | ASTNode::Ifthen(_, node1, node2) => {
       [get_ast_var_names(node1), get_ast_var_names(node2)].concat()
     }

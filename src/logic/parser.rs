@@ -11,6 +11,7 @@ enum OpType {
   Not(bool),
   And,
   Or,
+  StrictOr,
   Ifthen(ImplicationType),
 }
 
@@ -22,6 +23,7 @@ pub enum ASTNode {
   Not(Box<ASTNode>),
   And(Box<ASTNode>, Box<ASTNode>),
   Or(Box<ASTNode>, Box<ASTNode>),
+  StrictOr(Box<ASTNode>, Box<ASTNode>),
   Ifthen(ImplicationType, Box<ASTNode>, Box<ASTNode>),
 }
 
@@ -52,6 +54,9 @@ fn put_common_op_into_ast(
     }
     OpType::Or => {
       *ast = ASTNode::Or(Box::new(val1), Box::new(val2));
+    }
+    OpType::StrictOr => {
+      *ast = ASTNode::StrictOr(Box::new(val1), Box::new(val2));
     }
     OpType::Not(_) => {
       return Err("Cannot add this NOT operation into the ast.");
@@ -143,7 +148,13 @@ pub fn parse_to_ast(expr: &str, mode: Mode) -> Result<Box<ASTNode>, String> {
           return err_wrapper("Expect a value, but found an OR operation.", i);
         }
 
-        op_type = Some(OpType::Or);
+        if let Some((_, next_char)) = chars_peekable.peek() && *next_char == OR_SYM {
+          op_type = Some(OpType::StrictOr);
+          chars_peekable.next();
+        } else {
+          op_type = Some(OpType::Or);
+        }
+
         if !ast.eq(&ASTNode::Empty) {
           temp_val1 = Some(ast.clone());
         }

@@ -1,5 +1,7 @@
 use crate::{global::*, mode::Mode, utils::validate_var_name, variables::Variables};
 
+use crate::logic::optimizer::optimize_ast;
+
 #[derive(Clone, PartialEq)]
 pub enum ImplicationType {
   Forward,
@@ -25,6 +27,32 @@ pub enum ASTNode {
   Or(Box<ASTNode>, Box<ASTNode>),
   StrictOr(Box<ASTNode>, Box<ASTNode>),
   Ifthen(ImplicationType, Box<ASTNode>, Box<ASTNode>),
+}
+
+impl ASTNode {
+  pub fn stringify(&self) -> String {
+    match self {
+      ASTNode::Value(val) => {
+        match val {
+          true => "1".to_string(),
+          false => "0".to_string(),
+        }
+      }
+      ASTNode::Var(var_name) => var_name.to_string(),
+      ASTNode::Not(node) => format!("!{}", node.stringify()),
+      ASTNode::And(node1, node2) => format!("({}&{})", node1.stringify(), node2.stringify()),
+      ASTNode::Or(node1, node2) => format!("({}|{})", node1.stringify(), node2.stringify()),
+      ASTNode::StrictOr(node1, node2) => format!("({}||{})", node1.stringify(), node2.stringify()),
+      ASTNode::Ifthen(implication_type, node1, node2) => {
+        match implication_type {
+          ImplicationType::Forward => format!("({}>{})", node1.stringify(), node2.stringify()),
+          ImplicationType::Reverse => format!("({}<{})", node1.stringify(), node2.stringify()),
+          ImplicationType::Bidirectional => format!("({}-{})", node1.stringify(), node2.stringify()),
+        }
+      }
+      _ => "".to_string()
+    }
+  }
 }
 
 fn err_wrapper(e: &str, i: usize) -> Result<Box<ASTNode>, String> {
@@ -69,7 +97,7 @@ fn put_common_op_into_ast(
   Ok(())
 }
 
-pub fn parse_to_ast(expr: &str, mode: Mode) -> Result<Box<ASTNode>, String> {
+pub fn parse_to_ast(expr: &str, mode: Mode, optimize: bool) -> Result<Box<ASTNode>, String> {
   let mut ast = ASTNode::Empty;
   let mut temp_val1: Option<ASTNode> = None;
   let mut temp_val2: Option<ASTNode> = None;
@@ -99,7 +127,7 @@ pub fn parse_to_ast(expr: &str, mode: Mode) -> Result<Box<ASTNode>, String> {
               }
 
               // bracket end
-              let bracket_ast = match parse_to_ast(&temp_expr, mode) {
+              let bracket_ast = match parse_to_ast(&temp_expr, mode, optimize) {
                 Ok(parsed) => { Some(*parsed) }
                 Err(e) => { return err_wrapper(&e, j); }
               };
@@ -196,7 +224,7 @@ pub fn parse_to_ast(expr: &str, mode: Mode) -> Result<Box<ASTNode>, String> {
         }
 
         let var_ast = match mode {
-          Mode::Default => { // default mode
+          Mode::Default | Mode::Simplify => { // default mode
             let variables = Variables::get_instance().read().unwrap();
             let var_value = match variables.get_var(&char) {
               Some(val) => val,
@@ -271,10 +299,8 @@ pub fn parse_to_ast(expr: &str, mode: Mode) -> Result<Box<ASTNode>, String> {
     ast = temp_val1.take().unwrap();
   }
 
-  Ok(optimize_ast(Box::new(ast)))
-}
-
-/** todo */
-fn optimize_ast(ast: Box<ASTNode>) -> Box<ASTNode> {
-  ast
+  match optimize {
+    true => Ok(optimize_ast(Box::new(ast))),
+    false => Ok(Box::new(ast))
+  }
 }

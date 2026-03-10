@@ -2,7 +2,7 @@ use std::sync::{LazyLock, RwLock};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Mode {
-	Default, Table
+	Default, Table, Simplify
 }
 
 pub static MODE: LazyLock<RwLock<Mode>> = LazyLock::new(|| {
@@ -21,6 +21,7 @@ pub fn switch_mode(new_mode: Mode) {
 pub fn get_mode_name() -> String {
 	match get_mode() {
 		Mode::Default => "default".to_string(),
-		Mode::Table => "table".to_string()
+		Mode::Table => "table".to_string(),
+		Mode::Simplify => "simplify".to_string(),
 	}
 }

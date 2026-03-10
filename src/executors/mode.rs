@@ -14,6 +14,10 @@ impl Executor for ModeExecutor {
         switch_mode(Mode::Table);
         return Ok(true);
       }
+      "simplify" => {
+        switch_mode(Mode::Simplify);
+        return Ok(true);
+      }
       _ => {}
     }
 

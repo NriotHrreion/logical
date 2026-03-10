@@ -28,7 +28,7 @@ impl Executor for VarExecutor {
       }
 
       let mut variables = Variables::get_instance().write().unwrap();
-      let ast = parse_to_ast(expr, Mode::Default)?;
+      let ast = parse_to_ast(expr, Mode::Default, false)?;
       let val = eval_ast(ast, variables.get_all_vars())?;
 
       let name = name_str.chars().next().unwrap();

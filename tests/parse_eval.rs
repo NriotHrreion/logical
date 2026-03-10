@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use logical::{logic::{eval::eval_ast, parser::parse_to_ast}, mode::Mode};
 
 fn eval_expr(expr: &str) -> Result<bool, String> {
-	let ast = parse_to_ast(expr, Mode::Default)?;
+	let ast = parse_to_ast(expr, Mode::Default, false)?;
 	eval_ast(ast, &HashMap::new())
 }
 

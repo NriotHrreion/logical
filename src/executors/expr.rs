@@ -31,6 +31,7 @@ fn get_ast_var_names(ast: Box<ASTNode>) -> Vec<char> {
     }
   }
 
+  result.sort_unstable();
   result
 }
 
@@ -72,8 +73,8 @@ fn print_truth_table(ast: Box<ASTNode>) -> Result<(), String> {
       }
     }
     match result {
-      true => print!("| {}      |\n", 1),
-      false => print!("| {}      |\n", 0),
+      true => print!("|      {} |\n", 1),
+      false => print!("|      {} |\n", 0),
     }
 
     let mut carry = false;
@@ -98,16 +99,24 @@ impl Executor for ExprExecutor {
     let mode = get_mode();
 
     let variables = Variables::get_instance().read().unwrap();
-    let ast = parse_to_ast(input, mode)?;
 
     match mode {
-      Mode::Default => {
+      Mode::Default | Mode::Simplify => {
+        let should_simplify = matches!(mode, Mode::Simplify);
+        let ast = parse_to_ast(input, mode, should_simplify)?;
+        if should_simplify {
+          println!("=> {}", ast.stringify().bright_black());
+        }
+        
         let val = eval_ast(ast, variables.get_all_vars())?;
         
         if val { println!("{}{}", "=".bright_black(), "1".bold()); }
         else { println!("{}{}", "=".bright_black(), "0".bold()); }
       }
       Mode::Table => {
+        let ast = parse_to_ast(input, mode, true)?;
+        println!("=> {}", ast.stringify().bright_black());
+
         match print_truth_table(ast) {
           Ok(()) => {}
           Err(e) => {
